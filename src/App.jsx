@@ -1,3 +1,4 @@
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { useEffect, useState } from "react";
 import Header from "./components/Header";
 import TodoComputed from "./components/TodoComputed";
@@ -15,6 +16,13 @@ import TodoList from "./components/TodoList";
 
 const initialStateTodos = JSON.parse(localStorage.getItem("todos")) || [];
 
+const reorder = (list, startIndex, endIndex) => {
+  const result = [...list];
+  const [removed] = result.splice(startIndex, 1);
+  result.splice(endIndex, 0, removed);
+  return result;
+};
+
 const App = () => {
   const [todos, setTodos] = useState(initialStateTodos);
 
@@ -24,16 +32,16 @@ const App = () => {
 
   const createTodo = (title) => {
     const newTodo = {
-      id: todos.id++,
+      id: Date.now(),
       title: title.trim(),
       completed: false,
-    }
+    };
 
     setTodos([...todos, newTodo]);
   }
 
   const updateTodo = (id) => {
-    setTodos(todos.map(todo => todo.id === id ? { ...todo, completed: !todo.completed } : todo))
+    setTodos(todos.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo))
   }
 
   const removeTodo = (id) => {
@@ -61,7 +69,15 @@ const App = () => {
       default:
         return todos;
     }
-  }
+  };
+
+  const handleDragEnd = result => {
+    const { destination, source } = result;
+    if (!destination) return;
+    if (source.index === destination.index && source.droppableId === destination.droppableId) return;
+
+    setTodos((prevTasks) => reorder(prevTasks, source.index, destination.index));
+  };
 
   return (
     <div
@@ -76,11 +92,13 @@ const App = () => {
         <TodoCreate createTodo={createTodo} />
 
         {/* TodoList (TodoItem) TodoUpdate y TodoDelete */}
-        <TodoList todos={filteredTodos()} removeTodo={removeTodo} updateTodo={updateTodo} />
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <TodoList todos={filteredTodos()} removeTodo={removeTodo} updateTodo={updateTodo} />
+        </DragDropContext>
 
         <TodoComputed computedItemsLeft={computedItemsLeft} clearCompleted={clearCompleted} />
 
-        <TodoFilter changeFilter={changeFilter} filter={filter}/>
+        <TodoFilter changeFilter={changeFilter} filter={filter} />
       </main>
 
       <footer className="mt-8 text-center dark:text-gray-400 transition-all duration-1000">
